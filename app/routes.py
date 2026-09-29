@@ -1,136 +1,37 @@
-from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
-
-from app.models import (
-    atualizar_atividade,
-    buscar_atividade,
-    concluir_atividade,
-    contar_atividades,
-    criar_atividade,
-    excluir_atividade,
-    listar_atividades,
-)
-
-main = Blueprint("main", __name__)
-
-PRIORIDADES = ["Baixa", "Média", "Alta"]
-STATUS = ["Pendente", "Concluída"]
+from flask import Blueprint,current_app,flash,redirect,render_template,request,url_for
+from app.models import *
+main=Blueprint("main",__name__)
+PRIORIDADES=["Baixa","Média","Alta"]; STATUS=["Pendente","Concluída"]
 
 @main.route("/")
 def inicio():
-    status = request.args.get("status", "")
-    prioridade = request.args.get("prioridade", "")
+    s=request.args.get("status",""); p=request.args.get("prioridade","")
+    path=current_app.config["DATABASE_PATH"]
+    return render_template("index.html",atividades=listar_atividades(path,s or None,p or None),contadores=contar_atividades(path),filtro_status=s,filtro_prioridade=p,prioridades=PRIORIDADES,status_opcoes=STATUS)
 
-    atividades = listar_atividades(
-        current_app.config["DATABASE_PATH"],
-        status=status or None,
-        prioridade=prioridade or None,
-    )
-    contadores = contar_atividades(current_app.config["DATABASE_PATH"])
-
-    return render_template(
-        "index.html",
-        atividades=atividades,
-        contadores=contadores,
-        filtro_status=status,
-        filtro_prioridade=prioridade,
-        prioridades=PRIORIDADES,
-        status_opcoes=STATUS,
-    )
-
-@main.route("/atividade/nova", methods=["GET", "POST"])
+@main.route("/atividade/nova",methods=["GET","POST"])
 def nova_atividade():
-    if request.method == "POST":
-        titulo = request.form.get("titulo", "").strip()
-        descricao = request.form.get("descricao", "").strip()
-        data_entrega = request.form.get("data_entrega", "").strip()
-        prioridade = request.form.get("prioridade", "Média")
+    if request.method=="POST":
+        t=request.form.get("titulo","").strip()
+        if not t: flash("Informe um título.","erro")
+        else:
+            criar_atividade(current_app.config["DATABASE_PATH"],t,request.form.get("descricao","").strip(),request.form.get("data_entrega",""),request.form.get("prioridade","Média"))
+            flash("Atividade cadastrada!","sucesso"); return redirect(url_for("main.inicio"))
+    return render_template("formulario.html",atividade=None,prioridades=PRIORIDADES,status_opcoes=STATUS)
 
-        if not titulo:
-            flash("Informe um título para a atividade.", "erro")
-            return render_template(
-                "formulario.html",
-                atividade=None,
-                prioridades=PRIORIDADES,
-                status_opcoes=STATUS,
-            )
+@main.route("/atividade/<int:i>/editar",methods=["GET","POST"])
+def editar_atividade(i):
+    path=current_app.config["DATABASE_PATH"]; a=buscar_atividade(path,i)
+    if not a: flash("Atividade não encontrada.","erro"); return redirect(url_for("main.inicio"))
+    if request.method=="POST":
+        atualizar_atividade(path,i,request.form.get("titulo","").strip(),request.form.get("descricao","").strip(),request.form.get("data_entrega",""),request.form.get("prioridade","Média"),request.form.get("status","Pendente"))
+        flash("Atividade atualizada!","sucesso"); return redirect(url_for("main.inicio"))
+    return render_template("formulario.html",atividade=a,prioridades=PRIORIDADES,status_opcoes=STATUS)
 
-        if prioridade not in PRIORIDADES:
-            prioridade = "Média"
+@main.post("/atividade/<int:i>/concluir")
+def marcar_concluida(i):
+    concluir_atividade(current_app.config["DATABASE_PATH"],i); flash("Atividade concluída!","sucesso"); return redirect(url_for("main.inicio"))
 
-        criar_atividade(
-            current_app.config["DATABASE_PATH"],
-            titulo,
-            descricao,
-            data_entrega,
-            prioridade,
-        )
-        flash("Atividade cadastrada com sucesso!", "sucesso")
-        return redirect(url_for("main.inicio"))
-
-    return render_template(
-        "formulario.html",
-        atividade=None,
-        prioridades=PRIORIDADES,
-        status_opcoes=STATUS,
-    )
-
-@main.route("/atividade/<int:atividade_id>/editar", methods=["GET", "POST"])
-def editar_atividade(atividade_id):
-    atividade = buscar_atividade(current_app.config["DATABASE_PATH"], atividade_id)
-
-    if atividade is None:
-        flash("Atividade não encontrada.", "erro")
-        return redirect(url_for("main.inicio"))
-
-    if request.method == "POST":
-        titulo = request.form.get("titulo", "").strip()
-        descricao = request.form.get("descricao", "").strip()
-        data_entrega = request.form.get("data_entrega", "").strip()
-        prioridade = request.form.get("prioridade", "Média")
-        status = request.form.get("status", "Pendente")
-
-        if not titulo:
-            flash("Informe um título para a atividade.", "erro")
-            return render_template(
-                "formulario.html",
-                atividade=atividade,
-                prioridades=PRIORIDADES,
-                status_opcoes=STATUS,
-            )
-
-        atualizar_atividade(
-            current_app.config["DATABASE_PATH"],
-            atividade_id,
-            titulo,
-            descricao,
-            data_entrega,
-            prioridade if prioridade in PRIORIDADES else "Média",
-            status if status in STATUS else "Pendente",
-        )
-        flash("Atividade atualizada com sucesso!", "sucesso")
-        return redirect(url_for("main.inicio"))
-
-    return render_template(
-        "formulario.html",
-        atividade=atividade,
-        prioridades=PRIORIDADES,
-        status_opcoes=STATUS,
-    )
-
-@main.post("/atividade/<int:atividade_id>/concluir")
-def marcar_concluida(atividade_id):
-    if buscar_atividade(current_app.config["DATABASE_PATH"], atividade_id):
-        concluir_atividade(current_app.config["DATABASE_PATH"], atividade_id)
-        flash("Atividade marcada como concluída.", "sucesso")
-    else:
-        flash("Atividade não encontrada.", "erro")
-    return redirect(url_for("main.inicio"))
-
-@main.post("/atividade/<int:atividade_id>/excluir")
-def remover_atividade(atividade_id):
-    if buscar_atividade(current_app.config["DATABASE_PATH"], atividade_id):
-        excluir_atividade(current_app.config["DATABASE_PATH"], atividade_id)
-        flash("Atividade excluída.", "sucesso")
-    else:
-        flash("Atividade não encontrada.", "erro")
-    return redirect(url_for("main.inicio"))
+@main.post("/atividade/<int:i>/excluir")
+def remover_atividade(i):
+    excluir_atividade(current_app.config["DATABASE_PATH"],i); flash("Atividade excluída.","sucesso"); return redirect(url_for("main.inicio"))
