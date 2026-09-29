@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}{% if atividade %}Editar{% else %}Nova{% endif %} atividade{% endblock %}
+
+{% block content %}
+<section class="formulario-cabecalho">
+    <a class="voltar" href="{{ url_for('main.inicio') }}">← Voltar para atividades</a>
+    <h1>{% if atividade %}Editar atividade{% else %}Nova atividade{% endif %}</h1>
+    <p>Preencha as informações abaixo.</p>
+</section>
+
+<form class="formulario" method="post">
+    <div class="campo campo-grande">
+        <label for="titulo">Título *</label>
+        <input id="titulo" name="titulo" type="text" maxlength="120" required
+               value="{{ atividade['titulo'] if atividade else '' }}"
+               placeholder="Ex.: Entregar trabalho de Engenharia de Software">
+    </div>
+
+    <div class="campo campo-grande">
+        <label for="descricao">Descrição</label>
+        <textarea id="descricao" name="descricao" rows="5" maxlength="1000"
+                  placeholder="Detalhes da atividade...">{{ atividade['descricao'] if atividade else '' }}</textarea>
+    </div>
+
+    <div class="grade-campos">
+        <div class="campo">
+            <label for="data_entrega">Data de entrega</label>
+            <input id="data_entrega" name="data_entrega" type="date"
+                   value="{{ atividade['data_entrega'] if atividade else '' }}">
+        </div>
+
+        <div class="campo">
+            <label for="prioridade">Prioridade</label>
+            <select id="prioridade" name="prioridade">
+                {% for item in prioridades %}
+                    <option value="{{ item }}"
+                        {% if (atividade and atividade['prioridade'] == item) or (not atividade and item == 'Média') %}selected{% endif %}>
+                        {{ item }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        {% if atividade %}
+        <div class="campo">
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                {% for item in status_opcoes %}
+                    <option value="{{ item }}" {% if atividade['status'] == item %}selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="acoes-formulario">
+        <a class="botao botao-secundario" href="{{ url_for('main.inicio') }}">Cancelar</a>
+        <button class="botao botao-primario" type="submit">
+            {% if atividade %}Salvar alterações{% else %}Cadastrar atividade{% endif %}
+        </button>
+    </div>
+</form>
+{% endblock %}
