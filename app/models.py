@@ -1,102 +1,42 @@
 import sqlite3
 from datetime import datetime
 
-def get_connection(database_path):
-    connection = sqlite3.connect(database_path)
-    connection.row_factory = sqlite3.Row
-    return connection
+def get_connection(path):
+    db=sqlite3.connect(path); db.row_factory=sqlite3.Row; return db
 
-def init_db(database_path):
-    connection = get_connection(database_path)
-    connection.execute("""
-        CREATE TABLE IF NOT EXISTS atividades (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            titulo TEXT NOT NULL,
-            descricao TEXT,
-            data_entrega TEXT,
-            prioridade TEXT NOT NULL DEFAULT 'Média',
-            status TEXT NOT NULL DEFAULT 'Pendente',
-            criado_em TEXT NOT NULL
-        )
-    """)
-    connection.commit()
-    connection.close()
+def init_db(path):
+    db=get_connection(path)
+    db.execute("""CREATE TABLE IF NOT EXISTS atividades(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,titulo TEXT NOT NULL,descricao TEXT,
+        data_entrega TEXT,prioridade TEXT NOT NULL DEFAULT 'Média',
+        status TEXT NOT NULL DEFAULT 'Pendente',criado_em TEXT NOT NULL)""")
+    db.commit(); db.close()
 
-def listar_atividades(database_path, status=None, prioridade=None):
-    connection = get_connection(database_path)
-    query = "SELECT * FROM atividades WHERE 1=1"
-    params = []
+def listar_atividades(path,status=None,prioridade=None):
+    db=get_connection(path); q="SELECT * FROM atividades WHERE 1=1"; p=[]
+    if status: q+=" AND status=?"; p.append(status)
+    if prioridade: q+=" AND prioridade=?"; p.append(prioridade)
+    q+=" ORDER BY CASE WHEN status='Pendente' THEN 0 ELSE 1 END,data_entrega ASC,id DESC"
+    rows=db.execute(q,p).fetchall(); db.close(); return rows
 
-    if status:
-        query += " AND status = ?"
-        params.append(status)
-    if prioridade:
-        query += " AND prioridade = ?"
-        params.append(prioridade)
+def buscar_atividade(path,i):
+    db=get_connection(path); r=db.execute("SELECT * FROM atividades WHERE id=?",(i,)).fetchone(); db.close(); return r
 
-    query += """
-        ORDER BY
-            CASE WHEN status = 'Pendente' THEN 0 ELSE 1 END,
-            CASE WHEN data_entrega IS NULL OR data_entrega = '' THEN 1 ELSE 0 END,
-            data_entrega ASC,
-            id DESC
-    """
+def criar_atividade(path,t,d,dt,pr):
+    db=get_connection(path); db.execute("INSERT INTO atividades(titulo,descricao,data_entrega,prioridade,status,criado_em) VALUES(?,?,?,?,?,?)",(t,d,dt,pr,"Pendente",datetime.now().isoformat(timespec="seconds"))); db.commit(); db.close()
 
-    atividades = connection.execute(query, params).fetchall()
-    connection.close()
-    return atividades
+def atualizar_atividade(path,i,t,d,dt,pr,s):
+    db=get_connection(path); db.execute("UPDATE atividades SET titulo=?,descricao=?,data_entrega=?,prioridade=?,status=? WHERE id=?",(t,d,dt,pr,s,i)); db.commit(); db.close()
 
-def buscar_atividade(database_path, atividade_id):
-    connection = get_connection(database_path)
-    atividade = connection.execute(
-        "SELECT * FROM atividades WHERE id = ?", (atividade_id,)
-    ).fetchone()
-    connection.close()
-    return atividade
+def concluir_atividade(path,i):
+    db=get_connection(path); db.execute("UPDATE atividades SET status='Concluída' WHERE id=?",(i,)); db.commit(); db.close()
 
-def criar_atividade(database_path, titulo, descricao, data_entrega, prioridade):
-    connection = get_connection(database_path)
-    connection.execute("""
-        INSERT INTO atividades
-        (titulo, descricao, data_entrega, prioridade, status, criado_em)
-        VALUES (?, ?, ?, ?, 'Pendente', ?)
-    """, (titulo, descricao, data_entrega, prioridade, datetime.now().isoformat(timespec="seconds")))
-    connection.commit()
-    connection.close()
+def excluir_atividade(path,i):
+    db=get_connection(path); db.execute("DELETE FROM atividades WHERE id=?",(i,)); db.commit(); db.close()
 
-def atualizar_atividade(database_path, atividade_id, titulo, descricao, data_entrega, prioridade, status):
-    connection = get_connection(database_path)
-    connection.execute("""
-        UPDATE atividades
-        SET titulo = ?, descricao = ?, data_entrega = ?, prioridade = ?, status = ?
-        WHERE id = ?
-    """, (titulo, descricao, data_entrega, prioridade, status, atividade_id))
-    connection.commit()
-    connection.close()
-
-def concluir_atividade(database_path, atividade_id):
-    connection = get_connection(database_path)
-    connection.execute(
-        "UPDATE atividades SET status = 'Concluída' WHERE id = ?",
-        (atividade_id,)
-    )
-    connection.commit()
-    connection.close()
-
-def excluir_atividade(database_path, atividade_id):
-    connection = get_connection(database_path)
-    connection.execute("DELETE FROM atividades WHERE id = ?", (atividade_id,))
-    connection.commit()
-    connection.close()
-
-def contar_atividades(database_path):
-    connection = get_connection(database_path)
-    total = connection.execute("SELECT COUNT(*) FROM atividades").fetchone()[0]
-    pendentes = connection.execute(
-        "SELECT COUNT(*) FROM atividades WHERE status = 'Pendente'"
-    ).fetchone()[0]
-    concluidas = connection.execute(
-        "SELECT COUNT(*) FROM atividades WHERE status = 'Concluída'"
-    ).fetchone()[0]
-    connection.close()
-    return {"total": total, "pendentes": pendentes, "concluidas": concluidas}
+def contar_atividades(path):
+    db=get_connection(path)
+    r={"total":db.execute("SELECT COUNT(*) FROM atividades").fetchone()[0],
+       "pendentes":db.execute("SELECT COUNT(*) FROM atividades WHERE status='Pendente'").fetchone()[0],
+       "concluidas":db.execute("SELECT COUNT(*) FROM atividades WHERE status='Concluída'").fetchone()[0]}
+    db.close(); return r
