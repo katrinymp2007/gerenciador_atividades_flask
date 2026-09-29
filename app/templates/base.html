@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Gerenciador de Atividades{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="topo">
+        <div class="container topo-conteudo">
+            <a class="logo" href="{{ url_for('main.inicio') }}">Gerenciador de Atividades</a>
+            <a class="botao botao-primario" href="{{ url_for('main.nova_atividade') }}">+ Nova atividade</a>
+        </div>
+    </header>
+
+    <main class="container conteudo">
+        {% with mensagens = get_flashed_messages(with_categories=true) %}
+            {% if mensagens %}
+                {% for categoria, mensagem in mensagens %}
+                    <div class="alerta {{ categoria }}">{{ mensagem }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="rodape">
+        <div class="container">Projeto acadêmico — Flask + SQLite</div>
+    </footer>
+</body>
+</html>
