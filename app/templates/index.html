@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Atividades | Gerenciador{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div>
+        <p class="eyebrow">ORGANIZAÇÃO</p>
+        <h1>Minhas atividades</h1>
+        <p class="subtitulo">Cadastre, acompanhe e conclua suas tarefas em um só lugar.</p>
+    </div>
+</section>
+
+<section class="resumo">
+    <div class="card-resumo">
+        <span>Total</span>
+        <strong>{{ contadores.total }}</strong>
+    </div>
+    <div class="card-resumo">
+        <span>Pendentes</span>
+        <strong>{{ contadores.pendentes }}</strong>
+    </div>
+    <div class="card-resumo">
+        <span>Concluídas</span>
+        <strong>{{ contadores.concluidas }}</strong>
+    </div>
+</section>
+
+<section class="filtros">
+    <form method="get" action="{{ url_for('main.inicio') }}">
+        <div>
+            <label for="status">Status</label>
+            <select id="status" name="status">
+                <option value="">Todos</option>
+                {% for item in status_opcoes %}
+                    <option value="{{ item }}" {% if filtro_status == item %}selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="prioridade">Prioridade</label>
+            <select id="prioridade" name="prioridade">
+                <option value="">Todas</option>
+                {% for item in prioridades %}
+                    <option value="{{ item }}" {% if filtro_prioridade == item %}selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button class="botao botao-secundario" type="submit">Filtrar</button>
+        <a class="link-limpar" href="{{ url_for('main.inicio') }}">Limpar</a>
+    </form>
+</section>
+
+<section class="lista">
+    {% if atividades %}
+        {% for atividade in atividades %}
+            <article class="atividade {% if atividade['status'] == 'Concluída' %}concluida{% endif %}">
+                <div class="atividade-principal">
+                    <div class="linha-titulo">
+                        <h2>{{ atividade['titulo'] }}</h2>
+                        <span class="badge prioridade-{{ atividade['prioridade']|lower }}">{{ atividade['prioridade'] }}</span>
+                    </div>
+
+                    {% if atividade['descricao'] %}
+                        <p>{{ atividade['descricao'] }}</p>
+                    {% endif %}
+
+                    <div class="metadados">
+                        <span>Status: {{ atividade['status'] }}</span>
+                        {% if atividade['data_entrega'] %}
+                            <span>Entrega: {{ atividade['data_entrega'] }}</span>
+                        {% else %}
+                            <span>Sem data de entrega</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="acoes">
+                    {% if atividade['status'] == 'Pendente' %}
+                        <form method="post" action="{{ url_for('main.marcar_concluida', atividade_id=atividade['id']) }}">
+                            <button class="botao botao-sucesso" type="submit">Concluir</button>
+                        </form>
+                    {% endif %}
+                    <a class="botao botao-secundario" href="{{ url_for('main.editar_atividade', atividade_id=atividade['id']) }}">Editar</a>
+                    <form method="post" action="{{ url_for('main.remover_atividade', atividade_id=atividade['id']) }}" onsubmit="return confirm('Deseja realmente excluir esta atividade?');">
+                        <button class="botao botao-perigo" type="submit">Excluir</button>
+                    </form>
+                </div>
+            </article>
+        {% endfor %}
+    {% else %}
+        <div class="vazio">
+            <h2>Nenhuma atividade encontrada</h2>
+            <p>Cadastre uma nova atividade para começar.</p>
+            <a class="botao botao-primario" href="{{ url_for('main.nova_atividade') }}">Cadastrar atividade</a>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}
